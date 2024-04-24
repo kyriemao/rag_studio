@@ -42,6 +42,7 @@ Output: e_win.(seed).jsonl, e_lose.jsonl, **xy.e_win_lose.jsonl**
 ```sh
 bash run_scripts/gen_e_win.seed.sh # add `--is_seed` if this is the seed round.
 bash run_scripts/gen_e_lose.sh
+bash run_scripts/get_xy_e_win_lose.sh
 ```
 
 

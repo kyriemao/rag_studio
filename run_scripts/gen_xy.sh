@@ -1,7 +1,6 @@
 python gen_xy.py \
 --openai_api_base="http://localhost:8000/v1/chat/completions" \
---model_name_or_path="llama2" \
---model_type="llama" \
+--model_name_or_path="qwen" \
 --batch_size=64 \
 --max_new_tokens=2048 \
 --num_passage=500 \

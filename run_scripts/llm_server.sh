@@ -6,3 +6,9 @@ python -m vllm.entrypoints.openai.api_server \
 --served-model-name llama2 \
 --tensor-parallel-size 4 \
 --trust-remote-code \
+
+# python -m vllm.entrypoints.openai.api_server \
+# --model Qwen/Qwen1.5-7B-Chat \
+# --served-model-name qwen \
+# --tensor-parallel-size 4 \
+# --trust-remote-code \

@@ -156,13 +156,19 @@ async def main(args):
     # 1. load inference dataset
     ignore_ids = set()
     if os.path.exists(args.output_path):
+        keeped_lines = []
         with open(args.output_path, "r") as f:
             for line in tqdm(f):
                 line = json.loads(line)
                 if line['success']:
                     ignore_ids.add(line['_id'])
-            
+                    keeped_lines.append(line)
     
+        with open(args.output_path, "w") as f:
+            for line in keeped_lines:
+                f.write(json.dumps(line) + '\n')
+
+    print("Ignoring {} samples that have been generated.".format(len(ignore_ids)))
     dataset = GenLoseRationaleDataset(args.input_data_path, args.max_ctx_num, GEN_LOSE_RATIONALE_PROMPT, ignore_ids)
     collator = GenLoseRationaleCollator()
     dataloader = DataLoader(dataset, batch_size=args.batch_size, collate_fn=collator)
@@ -184,7 +190,7 @@ async def main(args):
                 # write batch output
                 for key in output_result:     
                     fw.write(json.dumps(output_result[key]) + '\n')
-                    # fw.flush()
+                    fw.flush()
 
                 output_result.clear()
 
@@ -192,7 +198,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate the rationales and answers for questions.")
     parser.add_argument("--openai_api_base", type=str, default="http://localhost:8000/v1/chat/completions", help="OpenAI API base URL.")
     parser.add_argument("--model_name_or_path", type=str, required=True, help="Path to pretrained model or model identifier from huggingface.co/models")
-    parser.add_argument("--model_type", type=str, required=True, help="model type")
     parser.add_argument("--max_ctx_num", type=int, default=2, help="The number of passages to incorporate.")
     parser.add_argument("--max_new_tokens", type=int, default=2048, help="Max generated tokens for LLM.")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for inference.")

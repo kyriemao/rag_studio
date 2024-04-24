@@ -2,7 +2,6 @@ export CUDA_VISIBLE_DEVICES=0,1,2,3
 
 
 # 1. index the corpus
-
 MODEL_PATH="BAAI/bge-base-en-v1.5"
 
 torchrun --nproc_per_node=4 \

@@ -255,6 +255,7 @@ if __name__ == "__main__":
     parser.add_argument("--xy_raw_path", type=str, help="Path to the raw xy data.")
     parser.add_argument("--xy_path", type=str, help="Path to the xy data.")
     parser.add_argument("--xy_ctx_path", type=str, help="Path to the xy with top ctx data")
+    parser.add_argument("--n_context_psgs", type=int, default=5, help="Number of context passages to use.")
     parser.add_argument("--retrieved_data_path", type=str, help="Path to the the retrieved data.")
     parser.add_argument("--e_win_path", type=str, help="Path to the win rationales data.")
     parser.add_argument("--e_lose_path", type=str, help="Path to the lose rationales data.")
@@ -263,7 +264,6 @@ if __name__ == "__main__":
     
     # parser.add_argument("--initial_data_path", type=str, help="Path to the initial data. (train.jsonl or test.jsonl)")
     
-    # parser.add_argument("--n_context_psgs", type=int, default=5, help="Number of context passages to use.")
     # parser.add_argument("--hard_neg_train_data_path", type=str, help="Path to the training data with hard negatives.")
     # parser.add_argument("--ctx_data_path", type=str, help="Path to the data with context for rag.")
     # parser.add_argument("--rationale_data_path", type=str, help="Path to the rationales data.")

@@ -161,12 +161,20 @@ async def main(args):
     # 1. load exist psg_ids
     exist_ids = set()
     if os.path.exists(args.output_path):
+        keeped_lines = []
         with open(args.output_path) as f:
             for line in f:
                 line = json.loads(line)
                 if line['success']:
                     exist_ids.add(line['_id'])
-                    
+                    keeped_lines.append(line)
+        
+        with open(args.output_path, "w") as f:
+            for line in keeped_lines:
+                f.write(json.dumps(line) + '\n')
+    
+    print("Ignoring {} samples that have been generated.".format(len(exist_ids)))
+           
     data = []
     with open(args.input_data_path) as f:
         for line in tqdm(f):
@@ -204,7 +212,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate win rationale (e).")
     parser.add_argument("--openai_api_base", type=str, default="http://localhost:8000/v1/chat/completions", help="OpenAI API base URL.")
     parser.add_argument("--model_name_or_path", type=str, required=True, help="Path to pretrained model or model identifier from huggingface.co/models")
-    parser.add_argument("--model_type", type=str, required=True, help="model type")
     parser.add_argument("--max_new_tokens", type=int, default=2048, help="Max generated tokens for LLM.")
     parser.add_argument("--batch_size", type=int, default=64, help="Batch size for inference.")
     
