@@ -55,7 +55,7 @@ class GenWinRationaleCollator:
             question = sample['question']
             answer = sample['answer']
             pos_idx, pos_psg = sample['pos'][0]
-            if is_seed:
+            if self.is_seed:
                 has_pos_id = "{}_{}".format(sample['_id'], "has_pos")
                 has_pos_ctx_text = pos_psg
                 prompt = self.prompt_template.format(context=has_pos_ctx_text,

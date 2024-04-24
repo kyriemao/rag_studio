@@ -83,8 +83,8 @@ class RetrievalInferenceDataset(Dataset):
                 for line in tqdm(f):
                     line = json.loads(line)
                     sample_idx = line['_id']
-                    query = line['query']
-                    query_data.append({'sample_idx': sample_idx, 'query': query})
+                    question = line['question']
+                    query_data.append({'sample_idx': sample_idx, 'query': question})
         
         return query_data
         

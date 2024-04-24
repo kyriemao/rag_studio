@@ -82,7 +82,7 @@ class GenLoseRationaleDataset(Dataset):
                 top_psgs = top_psgs[:self.max_ctx_num]
                 random.shuffle(top_psgs)
                 has_pos_ctx_text = "\n".join(["[{}] {}".format(i+1, top_psgs[i]) for i in range(len(top_psgs))])
-                has_pos_text = self.prompt_template.format(context=has_pos_ctx_text, question=query)    
+                has_pos_text = self.prompt_template.format(context=has_pos_ctx_text, question=question)    
 
                 has_pos_id = "{}_{}".format(_id, "has_pos")
                 no_pos_id = "{}_{}".format(_id, "no_pos")

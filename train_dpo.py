@@ -28,11 +28,11 @@ DPO_LLAMA2_INPUT_PROMPT = """
 You are a helpful assistant.
 <</SYS>>
 
-Contextual Information: {context}
+Context: {context}
 
 Question: {question}
 
-Given the above contextual information and the question, generate a response in two parts.
+Given the above context and the question, generate a response in two parts.
 1. Rationale: Provide a concise rationale that explains how specific parts of the contextual information contributed to generating the correct answer. You should start by listing the helpful sentences from the contextual information that were instrumental in answering the question. Follow this by a brief explanation of how they enabled you to derive the correct answer. If none of the contextual information is helpful, output "None of the contextual information is helpful to answer the question".
 
 2. Answer: Provide a concise and direct answer to the question, focusing solely on the conclusion derived from the rationale.
@@ -122,7 +122,7 @@ class DPOTrainDataset(Dataset):
                     ctx_psgs = ctx_psgs[:self.max_ctx_num]
                     has_pos_ctx = ["[{}]: {}".format(i+1, ctx_psgs[i]) for i in range(len(ctx_psgs))]
                     has_pos_ctx_text = "\n\n".join(has_pos_ctx)
-                    x_has_pos = self.dpo_input_prmopt.format(context=has_pos_ctx_text,
+                    x_has_pos = self.dpo_input_prompt.format(context=has_pos_ctx_text,
                                                              question=question)
                     
                     train_data.append([x_has_pos, y_win_has_pos, y_lose_has_pos])
@@ -146,6 +146,8 @@ class DPOTrainDataset(Dataset):
                                                             question=question)
 
                     train_data.append([x_no_pos, y_win_no_pos, y_lose_no_pos])
+                
+                
 
         if self.use_data_percent < 1.0:
             random.seed(7)
@@ -181,7 +183,7 @@ def main():
     
     # 2. load data
     if model_args.model_type in ['llama', 'llama-lora']:
-        dpo_input_prompt = DPO_LLAMA_INPUT_PROMPT
+        dpo_input_prompt = DPO_LLAMA2_INPUT_PROMPT
     else:
         raise NotImplementedError("Only support llama2 model types.")
     
@@ -189,6 +191,10 @@ def main():
                                     dpo_input_prompt=dpo_input_prompt,
                                     max_ctx_num=data_args.max_ctx_num,
                                     use_data_percent=data_args.use_data_percent)
+    
+    # print(train_dataset[0][0])
+    # embed()
+    # input()
     
     
     train_hf_dataset = {"prompt": [train_dataset[i][0] for i in range(len(train_dataset))],

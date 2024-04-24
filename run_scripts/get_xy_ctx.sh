@@ -15,7 +15,7 @@ indexing.py \
 --corpus_path="/share/kelong/rag_studio/benchmarks/triviaqa/corpus.jsonl" \
 --per_device_eval_batch_size=1024 \
 --num_psg_per_block=1000000 \
---data_output_dir="/share/kelong/rag_studio/benchmarks/triviaqa/seed_corpus_index" \
+--data_output_dir="/share/kelong/rag_studio/benchmarks/triviaqa/corpus_index" \
 
 
 # 2. perform retrieval
@@ -26,8 +26,8 @@ python retrieval.py \
 --query_data_path_list="/share/kelong/rag_studio/benchmarks/triviaqa/xy.jsonl" \
 --max_q_len=128 \
 --per_device_eval_batch_size=64 \
---index_dir="/share/kelong/rag_studio/benchmarks/triviaqa/seed_corpus_index" \
---data_output_dir="/share/kelong/rag_studio/benchmarks/triviaqa/seed_retrieved_data" \
+--index_dir="/share/kelong/rag_studio/benchmarks/triviaqa/corpus_index" \
+--data_output_dir="/share/kelong/rag_studio/benchmarks/triviaqa/retrieved_data" \
 
 
 # 3. incoporate top ctx passages
@@ -36,5 +36,5 @@ python data_prepare.py \
 --n_context_psgs=3 \
 --corpus_path="/share/kelong/rag_studio/benchmarks/triviaqa/corpus.jsonl" \
 --xy_path="/share/kelong/rag_studio/benchmarks/triviaqa/xy.jsonl" \
---retrieved_data_path="/share/kelong/rag_studio/benchmarks/triviaqa/seed_retrieved_data" \
+--retrieved_data_path="/share/kelong/rag_studio/benchmarks/triviaqa/retrieved_data" \
 --xy_ctx_path="/share/kelong/rag_studio/benchmarks/triviaqa/xy.ctx.jsonl" \

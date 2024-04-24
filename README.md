@@ -61,7 +61,7 @@ DPO(x_ha)
 
 Input: xy.rationale.jsonl, G
 
-Output: G_0
+Output: G_{next}
 
 ```sh
 bash run_scripts/train_dpo.sh
