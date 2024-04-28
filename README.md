@@ -1,4 +1,4 @@
-# RAG Studio: Self-aligned Retrieval-Augmented Generation
+ii# RAG Studio: Self-aligned Retrieval-Augmented Generation
 
 ## An Optimization Loop
 Given corpus D, initial retriever R, and generator G, the self-aligned optimization loop has the following steps:
