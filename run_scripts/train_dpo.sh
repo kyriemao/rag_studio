@@ -4,18 +4,19 @@ export WANDB_PROJECT="train_dpo"
 
 MODEL_NAME_OR_PATH="/share/shared_models/models--meta-llama--Llama-2-7b-chat-hf/snapshots/92011f62d7604e261f748ec0cfe6329f31193e33"
 
-torchrun --nproc_per_node=1 \
+torchrun --nproc_per_node=4 \
 --master_port 22002 \
 train_dpo.py \
 --model_name_or_path=$MODEL_NAME_OR_PATH \
 --model_type="llama-lora" \
 --train_data_path="/share/kelong/rag_studio/benchmarks/triviaqa/xy.e_win_lose.jsonl" \
---per_device_train_batch_size=2 \
+--per_device_train_batch_size=10 \
 --use_data_percent=1.0 \
---max_seq_len=3072 \
+--max_length=3072 \
+--max_prompt_length=2048 \
 --max_ctx_num=3 \
 --use_data_percent=1.0 \
---learning_rate=2e-5 \
+--learning_rate=1e-6 \
 --num_train_epochs=1 \
 --warmup_ratio=0.05 \
 --logging_steps=1 \

@@ -63,7 +63,8 @@ class ModelArguments:
 @dataclass
 class DataArguments:
     train_data_path: str = field(default=None, metadata={"help": "the training data path"})
-    max_seq_len: int = field(default=2048, metadata={"help": "The maximum total input sequence length for SFT."})
+    max_length: int = field(default=4096, metadata={"help": "The maximum total input and output sequence length for DPO."})
+    max_prompt_length: int = field(default=2048, metadata={"help": "The maximum total input sequence length for DPO."})
     max_ctx_num: int = field(default=5, metadata={"help": "The maximum number of context passages."})
     use_data_percent: float = field(default=1.0, metadata={"help": "The percent of training data to use."})
     force_emptying_dir: bool = field(default=False, metadata={"help": "Whether to force empty the output directory."})
@@ -179,7 +180,7 @@ def main():
         
     # 1. load model
     model, tokenizer = load_model(model_args, for_eval=False)
-    model_ref, _ = load_model(model_args, for_eval=False)
+    # model_ref, _ = load_model(model_args, for_eval=False)
     
     # 2. load data
     if model_args.model_type in ['llama', 'llama-lora']:
@@ -192,25 +193,23 @@ def main():
                                     max_ctx_num=data_args.max_ctx_num,
                                     use_data_percent=data_args.use_data_percent)
     
-    # print(train_dataset[0][0])
-    # embed()
-    # input()
-    
     
     train_hf_dataset = {"prompt": [train_dataset[i][0] for i in range(len(train_dataset))],
                         "chosen": [train_dataset[i][1] for i in range(len(train_dataset))],
                         "rejected": [train_dataset[i][2] for i in range(len(train_dataset))]}
     train_hf_dataset = Dataset.from_dict(train_hf_dataset)
-        
+    # embed()
+    # input()
+
     # 3. train
     dpo_trainer = DPOTrainer(
         model,
-        model_ref,
+        ref_model=None,
         args=training_args,
         beta=0.1,
         tokenizer=tokenizer,
-        max_length=data_args.max_seq_len,
-        max_prompt_length=2304,
+        max_length=data_args.max_length,
+        max_prompt_length=data_args.max_prompt_length,
         train_dataset=train_hf_dataset
     )
 

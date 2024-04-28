@@ -1,4 +1,4 @@
-ii# RAG Studio: Self-aligned Retrieval-Augmented Generation
+# RAG Studio: Self-aligned Retrieval-Augmented Generation
 
 ## An Optimization Loop
 Given corpus D, initial retriever R, and generator G, the self-aligned optimization loop has the following steps:
@@ -66,4 +66,29 @@ Output: G_{next}
 
 ```sh
 bash run_scripts/train_dpo.sh
+```
+
+5. Train retriever with hard negative mining from the rationales
+
+**Step1**: judge whether the model predicted answer is correct. We only optimize the samples where the predicted answers are wrong.
+
+Input: xy.jsonl, e_lose.jsonl, G
+
+Output: judgment.jsonl
+
+```sh
+bash run_scripts/gen_j.sh
+```
+
+**Step2**: identify the passages that contributing to the wrong predicted answer and use them as the hard negatives. The gold passaage are always positives. Then, we form the training data file for training the retriever.
+```json
+{"_id": str, "question": str, "pos": [], "neg": []}
+```
+
+Input:
+
+Output:
+
+```sh
+bash run_scripts/
 ```
