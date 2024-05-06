@@ -125,22 +125,26 @@ def add_ctx(args):
                 if rank <= args.n_context_psgs+3:
                     top_context_psgs[qid].append(psg_idx)
     
-    for qid in tqdm(top_context_psgs):
-        pos_psg_ids = set([pair[0] for pair in qa_data[qid]['pos']])
-        selected_top_psgs = []
-        for top_psg_idx in top_context_psgs[qid]:
-            if top_psg_idx not in pos_psg_ids:
-                selected_top_psgs.append(top_psg_idx)
-                if len(selected_top_psgs) == args.n_context_psgs:
-                    break
-        top_context_psgs[qid] = selected_top_psgs
-        
+    if args.filter_pos_from_ctx:
+        for qid in tqdm(top_context_psgs):
+            pos_psg_ids = set([pair[0] for pair in qa_data[qid]['pos']])
+            selected_top_psgs = []
+            for top_psg_idx in top_context_psgs[qid]:
+                if top_psg_idx not in pos_psg_ids:
+                    selected_top_psgs.append(top_psg_idx)
+                    if len(selected_top_psgs) == args.n_context_psgs:
+                        break
+            top_context_psgs[qid] = selected_top_psgs
+    else:
+        for qid in top_context_psgs:
+            top_context_psgs[qid] = top_context_psgs[qid][:args.n_context_psgs]
     
+    field_name = "top_no_pos" if args.filter_pos_from_ctx else "top"
     with open(args.xy_ctx_path, "w") as fw:
         for qid in tqdm(qa_data, desc="Forming the training data with top context..."):
             line = qa_data[qid]
-            top_no_pos = [(psg_id, corpus[psg_id]) for psg_id in top_context_psgs[qid]]
-            line['top_no_pos'] = top_no_pos
+            top = [(psg_id, corpus[psg_id]) for psg_id in top_context_psgs[qid]]
+            line[field_name] = top
             fw.write(json.dumps(line) + '\n')
             
     print("Done!")
@@ -354,7 +358,8 @@ if __name__ == "__main__":
     parser.add_argument("--judgment_path", type=str, help="Path to the judgment data.")
     parser.add_argument("--hard_neg_path", type=str, help="Path to the hard neg data.")
     parser.add_argument("--is_seed", action='store_true', help="Indicates if this is the seed round.")
-    
+    parser.add_argument("--filter_pos_from_ctx", action='store_true', help="Indicates if we should filter out the positive passages from the context.")
+
     # parser.add_argument("--initial_data_path", type=str, help="Path to the initial data. (train.jsonl or test.jsonl)")
     
     # parser.add_argument("--hard_neg_train_data_path", type=str, help="Path to the training data with hard negatives.")

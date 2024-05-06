@@ -32,6 +32,7 @@ python retrieval.py \
 # 3. incoporate top ctx passages
 python data_prepare.py \
 --stage="add_ctx" \
+--filter_pos_from_ctx \
 --n_context_psgs=3 \
 --corpus_path="/share/kelong/rag_studio/benchmarks/triviaqa/corpus.jsonl" \
 --xy_path="/share/kelong/rag_studio/benchmarks/triviaqa/xy.jsonl" \
