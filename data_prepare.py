@@ -229,8 +229,97 @@ def add_e_win_lose(args):
             fw.write(json.dumps(line) + '\n')
 
     print("Done!")
+
+
+def longest_common_substring(str1, str2):
+    # Create a 2D array to store lengths of longest common suffixes
+    m, n = len(str1), len(str2)
+    dp = [[0] * (n + 1) for _ in range(m + 1)]
+    longest = 0  # Length of longest common substring
+    lcs_end_pos = 0  # End position of LCS in str1
+
+    # Build the dp array
+    for i in range(1, m + 1):
+        for j in range(1, n + 1):
+            if str1[i - 1] == str2[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
+                if dp[i][j] > longest:
+                    longest = dp[i][j]
+                    lcs_end_pos = i
+            else:
+                dp[i][j] = 0
+
+    # Return the longest common substring
+    return str1[lcs_end_pos - longest:lcs_end_pos]
+
+def identify_belonging(passages, sentences):
+    results = []
+    identified_psg_idxs = set()
+    if not isinstance(passages[0], str):
+        passages = [passage[1] for passage in passages]
+
+    for i, sentence in enumerate(sentences):
+        max_length = 0
+        belonging_passage = None
+        # Compare each sentence with each passage
+        for passage in passages:
+            lcs = longest_common_substring(passage, sentence)
+            lcs_length = len(lcs)
+            # Check if the current LCS is the longest found so far
+            if lcs_length > max_length:
+                max_length = lcs_length
+                belonging_passage = passage
+
+        # Append the result as a tuple (sentence, index of the passage)
+        results.append((i, passages.index(belonging_passage)))
+        identified_psg_idxs.add(results[-1][1])
+        
+    return results, identified_psg_idxs
     
 
+def get_hard_neg(args):
+    e_lose_sentences = {}
+    with open(args.e_lose_path) as f:
+        for line in tqdm(f):
+            line = json.loads(line)
+            if not line['success']:
+                continue
+            e_lose_sentences[line['_id']] = line['e_lose']['helpful_sentences']
+
+    wrong_samples = {}
+    with open(args.judgment_path) as f:
+        for line in tqdm(f):
+            line = json.loads(line)
+            if not line['success']:
+                continue
+            if line['output']['j'] == 'incorrect':
+                if len(e_lose_sentences[line['_id']]) > 0:
+                    wrong_samples[line['_id']] = e_lose_sentences[line['_id']]
+
+    with open(args.xy_ctx_path) as f, open(args.hard_neg_path, 'w') as fw:
+        for line in tqdm(f):
+            line = json.loads(line)
+            _id = line['_id']
+            has_pos_id = "{}_{}".format(_id, "has_pos")
+            no_pos_id = "{}_{}".format(_id, "no_pos")
+
+            if has_pos_id in wrong_samples:
+                context = line['pos'] + line['top_no_pos']
+                context = context[:args.n_context_psgs]
+                sentences = wrong_samples[has_pos_id]
+            elif no_pos_id in wrong_samples:
+                context = line['top_no_pos'][:args.n_context_psgs]
+                sentences = wrong_samples[no_pos_id]
+            else:
+                continue
+            
+            line['hard_neg'] = []
+            mappings, idxs = identify_belonging(context, sentences)
+            pos_idxs = set([psg_item[0] for psg_item in line['pos']])
+            for idx in idxs:
+                if context[idx][0] not in pos_idxs:
+                    line['hard_neg'].append(context[idx])
+            fw.write(json.dumps(line) + '\n')
 
 def main(args):
     if args.stage == "gen_xy":
@@ -245,12 +334,14 @@ def main(args):
         add_ctx(args)
     elif args.stage == "add_e_win_lose":
         add_e_win_lose(args)
+    elif args.stage == "get_hard_neg":
+        get_hard_neg(args)
     else:
         raise ValueError("Invalid stage.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collection of funcs for data preparation.")
-    parser.add_argument("--stage", type=str, choices=["gen_xy", "add_e_win_lose", "add_ctx"], help="Stage of the data preparation.")
+    parser.add_argument("--stage", type=str, choices=["gen_xy", "add_e_win_lose", "add_ctx", "get_hard_neg"], help="Stage of the data preparation.")
     parser.add_argument("--corpus_path", type=str, help="Path to the corpus data.")
     parser.add_argument("--xy_raw_path", type=str, help="Path to the raw xy data.")
     parser.add_argument("--xy_path", type=str, help="Path to the xy data.")
@@ -260,6 +351,8 @@ if __name__ == "__main__":
     parser.add_argument("--e_win_path", type=str, help="Path to the win rationales data.")
     parser.add_argument("--e_lose_path", type=str, help="Path to the lose rationales data.")
     parser.add_argument("--xy_e_win_lose_path", type=str, help="Path to the xy with rationales data.")
+    parser.add_argument("--judgment_path", type=str, help="Path to the judgment data.")
+    parser.add_argument("--hard_neg_path", type=str, help="Path to the hard neg data.")
     parser.add_argument("--is_seed", action='store_true', help="Indicates if this is the seed round.")
     
     # parser.add_argument("--initial_data_path", type=str, help="Path to the initial data. (train.jsonl or test.jsonl)")

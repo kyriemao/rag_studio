@@ -86,9 +86,18 @@ bash run_scripts/gen_j.sh
 ```
 
 Input:
+xy.ctx.jsonl, e_lose.jsonl, judgment.jsonl
 
 Output:
+hard_neg.jsonl
 
 ```sh
-bash run_scripts/
+bash run_scripts/get_hard_neg.sh
 ```
+
+**Step3**: train the retriever.
+```sh
+bash run_scripts/train_retriever.sh
+```
+
+
