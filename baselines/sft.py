@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
 from trl import SFTTrainer
-from datasets import Dataset
+from datasets import Dataset as hf_dataset
 from transformers import HfArgumentParser, TrainingArguments
 
 import sys
@@ -24,21 +24,15 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-LLAMA2_TRAIN_NON_RAG_PROMPT = """
-[INST] Answer the following question. Directly output the answer without any other words.
-
-Question: {question}
-Answer:[/INST] {answer}</s>
-"""
 
 LLAMA2_TRAIN_RAG_PROMPT = """
 [INST] Given the context information, directly answer the following question without any other words. You may disregard the context if it's not relevant.
-
+ 
 Context: {context}
 
 Question: {question}
 
-Answer:[/INST] {answer}</s>
+Answer:[/INST] {answer} </s>
 """.strip("\n")
 
 
@@ -89,9 +83,9 @@ class SftDataset(Dataset):
                     ctx_psgs = [psg_item[1] for psg_item in line['top']][:self.max_ctx_num]
                     ctx = ["[{}]: {}".format(i+1, ctx_psgs[i]) for i in range(len(ctx_psgs))]
                     ctx_text = "\n\n".join(ctx)
-                    text = self.prompt_template.format(context=ctx_text, question=question, answer=answer)      
                 else:
-                    text = self.prompt_template.format(question=question, answer=answer)
+                    ctx_text = "None."    
+                text = self.prompt_template.format(context=ctx_text, question=question, answer=answer)      
                 train_data.append(text)
             
         if self.use_data_percent < 1.0:
@@ -163,14 +157,14 @@ def main():
     model, tokenizer = load_model(model_args, for_eval=False)
 
     # 2. load data
-    prompt_template = LLAMA2_TRAIN_RAG_PROMPT if data_args.max_ctx_num > 0 else LLAMA2_TRAIN_NON_RAG_PROMPT
+    prompt_template = LLAMA2_TRAIN_RAG_PROMPT
 
     train_dataset = SftDataset(train_data_path=data_args.train_data_path,
                                 prompt_template=prompt_template,
                                 max_ctx_num=data_args.max_ctx_num,
                                 use_data_percent=data_args.use_data_percent)
     train_hf_dataset = {"text": [train_dataset[i] for i in range(len(train_dataset))]}
-    train_hf_dataset = Dataset.from_dict(train_hf_dataset)
+    train_hf_dataset = hf_dataset.from_dict(train_hf_dataset)
     train_collator = SftCollator(data_args, tokenizer)
         
     # 3. train

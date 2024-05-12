@@ -1,7 +1,21 @@
+
+# python evaluation.py \
+# --pred_path="/share/kelong/rag_studio/baselines/ft_no_rag/result.jsonl" \
+# --oracle_path="/share/kelong/rag_studio/benchmarks/triviaqa/original_data/dev.wiki.jsonl" \
+
+# python evaluation.py \
+# --pred_path="/share/kelong/rag_studio/baselines/ft_rag/result2.ctx3.jsonl" \
+# --oracle_path="/share/kelong/rag_studio/benchmarks/triviaqa/original_data/dev.wiki.jsonl" \
+
+# python evaluation.py \
+# --pred_path="/share/kelong/rag_studio/baselines/ft_rag/result2.ctx0.jsonl" \
+# --oracle_path="/share/kelong/rag_studio/benchmarks/triviaqa/original_data/dev.wiki.jsonl" \
+
+
 python evaluation.py \
---pred_path="/share/kelong/rag_studio/baselines/llama2_zero_shot/llama2_zero_shot.jsonl" \
+--pred_path="/share/kelong/rag_studio/baselines/no_rag/result.jsonl" \
 --oracle_path="/share/kelong/rag_studio/benchmarks/triviaqa/original_data/dev.wiki.jsonl" \
 
 python evaluation.py \
---pred_path="/share/kelong/rag_studio/baselines/bge_llama2_three_shot_rag/bge_llama2_three_shot_rag.jsonl" \
+--pred_path="/share/kelong/rag_studio/baselines/rag/result.jsonl" \
 --oracle_path="/share/kelong/rag_studio/benchmarks/triviaqa/original_data/dev.wiki.jsonl" \

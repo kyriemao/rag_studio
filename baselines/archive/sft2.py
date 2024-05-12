@@ -12,9 +12,7 @@ import torch.distributed as dist
 from torch.utils.data import Dataset
 from torch.nn.utils.rnn import pad_sequence
 
-from trl import SFTTrainer
-from datasets import Dataset
-from transformers import HfArgumentParser, TrainingArguments
+from transformers import HfArgumentParser, TrainingArguments, Trainer
 
 import sys
 from rag_studio.utils import write_running_args
@@ -24,15 +22,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-LLAMA2_TRAIN_QA_PROMPT = """
-[INST] <<SYS>>
-You are a helpful assistant.
-<</SYS>>
 
-Answer the following question. Only return the answer without any other words.
-
-{question} [/INST] {answer} </s>
-""".strip("\n")
 
 @dataclass
 class ModelArguments:
@@ -49,20 +39,20 @@ class ModelArguments:
 class DataArguments:
     train_data_path: str = field(default=None, metadata={"help": "The path to the training data."})
     max_seq_len: int = field(default=2048, metadata={"help": "The maximum total input sequence length for SFT."})
-    response_template: str = field(default=None, metadata={"help": "The response template for SFT."})
+    max_ctx_num: int = field(default=1, metadata={"help": "The maximum number of context examples for SFT."})
     use_data_percent: float = field(default=1.0, metadata={"help": "The percent of training data to use."})
     force_emptying_dir: bool = field(default=False, metadata={"help": "Whether to force empty the output directory."})
     
 
-class SFTDataset(Dataset):
+class SftDataset(Dataset):
     def __init__(self, 
                  train_data_path,
-                 prompt_template,
+                 max_ctx_num,
                  use_data_percent: float=1.0):
         
         self.train_data_path = train_data_path
-        self.prompt_template = prompt_template
         self.use_data_percent = use_data_percent
+        self.max_ctx_num = max_ctx_num
         self.train_data = self._load_training_data()
         
     def _load_training_data(self):
@@ -72,8 +62,15 @@ class SFTDataset(Dataset):
                 line = json.loads(line)
                 question = line['question']
                 answer = line['gold_answers'][0]
-                text = self.prompt_template.format(question=question, answer=answer)      
-                train_data.append(text)
+                
+                if self.max_ctx_num > 0:
+                    # build raft context -- for triviaqa, we only consider the retrieved passages
+                    ctx_psgs = [psg_item[1] for psg_item in line['top']][:self.max_ctx_num]
+                    ctx = ["[{}]: {}".format(i+1, ctx_psgs[i]) for i in range(len(ctx_psgs))]
+                    ctx_text = "\n\n".join(ctx)
+                else:
+                    ctx_text = ""    
+                train_data.append([ctx_text, question, answer])  
             
         if self.use_data_percent < 1.0:
             random.seed(7)
@@ -88,53 +85,28 @@ class SFTDataset(Dataset):
         return self.train_data[item]
     
         
-class SFTCollator:
+class SftCollator:
     def __init__(self, data_args, tokenizer):
         self.tokenizer = tokenizer
-        self.response_template = data_args.response_template
         self.max_seq_len = data_args.max_seq_len
+        self.template = "{context}\n\nQuestion: {question}\nAnswer: {answer} </s>"
+
+    def __call__(self, batch):
+        texts = [self.template.format(context=sample[0], question=sample[1], answer=sample[2]) for sample in batch]
+        completion = [sample[2] + " " + self.tokenizer.eos_token for sample in batch]
+        data = self.tokenizer(texts, return_tensors="pt", padding="max_length", truncation=True, max_length=self.max_seq_len, add_special_tokens=True)
+        data_completion = self.tokenizer(completion, return_tensors="pt", padding="max_length", truncation=True, max_length=self.max_seq_len, add_special_tokens=False)
+        data_mask_reverse = 1 - data_completion["attention_mask"]
+        data_mask = data_mask_reverse * -100
+        data["labels"] = data["input_ids"].clone()
+        data["labels"] *= data_completion["attention_mask"]
+        data["labels"] += data_mask
+        data = {k: v.cuda() for k, v in data.items()}
         
-    def __call__(self, examples):
-        n_sample = len(examples)
-        input_ids = [torch.tensor(example['input_ids']) for example in examples]
-        attention_mask = [torch.tensor(example['attention_mask']) for example in examples]
+        return data
+            
 
-        input_ids = pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
-        attention_mask = pad_sequence(attention_mask, batch_first=True, padding_value=0)
-
-        labels = input_ids.detach().clone()
-        ignore_idx = -100
-        labels[labels == self.tokenizer.pad_token_id] = ignore_idx
         
-        # mask the prompt part
-        response_template_ids = self.tokenizer.encode(self.response_template, add_special_tokens=False)[1:]
-        for i in range(n_sample):
-            response_token_ids_start_idx = None
-            for idx in np.where(labels[i] == response_template_ids[0])[0]:
-                if (
-                    response_template_ids
-                    == labels[i][idx: idx + len(response_template_ids)].tolist()
-                ):
-                    response_token_ids_start_idx = idx
-
-            if response_token_ids_start_idx is None:
-                logger.warning(
-                    f"Could not find response key `{response_template_ids}` in the "
-                    f'following instance: {labels[i]} '
-                    f"This instance will be ignored in loss calculation. "
-                    f"Note, if this happens often, consider increasing the `max_seq_length`."
-                )
-                labels[i, :] = ignore_idx
-            else:
-                response_token_ids_end_idx = response_token_ids_start_idx + len(response_template_ids)
-                # Make pytorch loss function ignore all tokens up through the end of the response key
-                labels[i, :response_token_ids_end_idx] = ignore_idx
-   
-        return {"input_ids": input_ids,
-                "attention_mask": attention_mask,
-                "labels": labels}
-
-    
 
 def main():
     parser = HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
@@ -142,25 +114,23 @@ def main():
         
     # 1. load model
     model, tokenizer = load_model(model_args, for_eval=False)
+    tokenizer.padding_side = "left"
+    tokenizer.truncation_side = "left"
 
     # 2. load data
-    train_dataset = SFTDataset(train_data_path=data_args.train_data_path,
-                                    prompt_template=LLAMA2_TRAIN_QA_PROMPT,
-                                    use_data_percent=data_args.use_data_percent)
-    train_hf_dataset = {"text": [train_dataset[i] for i in range(len(train_dataset))]}
-    train_hf_dataset = Dataset.from_dict(train_hf_dataset)
-    train_collator = SFTCollator(data_args, tokenizer)
+
+    train_dataset = SftDataset(train_data_path=data_args.train_data_path,
+                                max_ctx_num=data_args.max_ctx_num,
+                                use_data_percent=data_args.use_data_percent)
+    train_collator = SftCollator(data_args, tokenizer)
         
     # 3. train
-    trainer = SFTTrainer(
+    trainer = Trainer(
         model=model,
         args=training_args,
         tokenizer=tokenizer,
-        max_seq_length=data_args.max_seq_len,
-        train_dataset=train_hf_dataset,
+        train_dataset=train_dataset,
         data_collator=lambda x: train_collator(x),
-        dataset_text_field="text",
-        dataset_num_proc=64,
     )
 
     trainer.train()

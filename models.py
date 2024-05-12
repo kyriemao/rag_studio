@@ -1,5 +1,6 @@
 from IPython import embed
 import torch
+import argparse
 from peft import LoraConfig, PeftConfig, PeftModel, get_peft_model
 from transformers import AutoModel, AutoTokenizer, AutoModelForCausalLM
 
@@ -41,10 +42,10 @@ def load_model(model_args, for_eval=False):
             peft_config = LoraConfig(
                     base_model_name_or_path=model_args.model_name_or_path,
                     task_type="CAUSAL_LM",
-                    r=32,
-                    lora_alpha=64,
-                    lora_dropout=0.1,
-                    target_modules=["q_proj", "v_proj", "o_proj", "down_proj", "up_proj", "gate_proj"],
+                    r=8,
+                    lora_alpha=32,
+                    lora_dropout=0.05,
+                    target_modules=["q_proj", "v_proj"],
                     inference_mode=False
                 )
             model = get_peft_model(model, peft_config)
@@ -53,8 +54,7 @@ def load_model(model_args, for_eval=False):
     
     # load tokenizer
     tokenizer = AutoTokenizer.from_pretrained(model_args.model_name_or_path)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.unk_token
+    tokenizer.pad_token = tokenizer.unk_token
     assert tokenizer.pad_token != tokenizer.eos_token
     
     if for_eval:
@@ -77,3 +77,27 @@ def retriever_forward(model,
         embs = torch.nn.functional.normalize(embs, p=2, dim=-1)
         
     return embs
+
+
+def merge_lora(args):
+    args.model_name_or_path = args.lora_path
+    model, tokenizer = load_model(args, for_eval=True)
+    model.save_pretrained(args.merged_output_path)
+    tokenizer.save_pretrained(args.merged_output_path)
+    print("The merged model has been saved at {}".format(args.merged_output_path))
+    
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Run some model functions")
+    parser.add_argument("--action", type=str, required=True, choices=['merge_lora'], help="Action to run.")
+    parser.add_argument("--model_type", type=str, help="Model type.")
+    parser.add_argument("--model_dtype", type=str, default="auto", help="Model dtype.")
+    parser.add_argument("--lora_path", type=str, help="Path to the Lora model.")
+    parser.add_argument("--merged_output_path", type=str, help=f"Path to the model to be merged with Lora.")
+
+    args = parser.parse_args()
+    
+    if args.action == 'merge_lora':
+        merge_lora(args)
+    else:
+        raise ValueError("Action not supported")

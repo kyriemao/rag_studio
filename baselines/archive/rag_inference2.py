@@ -16,13 +16,10 @@ from rag_studio.models import load_model
 
 
 RAG_PROMPT = """
-[INST] Given the context information, directly answer the following question without any other words. You may disregard the context if it's not relevant.
- 
-Context: {context}
+{context}
 
 Question: {question}
-
-Answer:[/INST]
+Answer:
 """.strip("\n")
 
 
@@ -50,10 +47,10 @@ class RagInferenceDataset(Dataset):
                     for i in range(len(top_psgs)):
                         context.append("[{}] {}".format(i+1, top_psgs[i]))
                     ctx_text = "\n\n".join(context)
-                    prompt = self.prompt_template.format(context=ctx_text, question=question)
                 else:
-                    ctx_text = "None."
-                prompt = self.prompt_template.format(context=ctx_text, question=question)
+                    ctx_text = ""
+                prompt = self.prompt_template.format(context=ctx_text, question=question).lstrip(' ').strip('\n')
+                # prompt = self.prompt_template.format(context=ctx_text, question=question)
                 test_data.append({"_id": _id, "prompt": prompt})
                
         return test_data
